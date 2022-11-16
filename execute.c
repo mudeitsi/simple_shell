@@ -1,24 +1,92 @@
-#include "shell.h"
+#include "hsh.h"
 
 /**
- * execute_prog - Executes binary or builtin
- * @args: Argument buffer
- * @line: Line buffer
- * @env: Environment
- * @flow: Helps decide what code to run
- * Return: 1 if success
- */
-int execute_prog(char **args, char *line, char **env, int flow)
+  * execute - execute a command
+  * @info: arguments passed
+  *
+  * Return: status
+  */
+int execute(info_t *info)
 {
-	int status;
+	const builtin_t *builtin = get_builtin(*info->tokens);
 
-	if (args[0] == NULL)
-		return (1);
-	if (flow == 1)
+	if (builtin)
 	{
-		if (check_for_builtins(args, line, env) == 1)
-			return (1);
+		return (builtin->f(info));
 	}
-	status = launch_prog(args);
-	return (status);
+	if (_strchr(*info->tokens, '/') == -1)
+	{
+		free_list(&info->path);
+		info->path = str_to_list(get_dict_val(info->env, "PATH"), ':');
+		info->exe = search_path(info, info->path);
+	}
+	else
+	{
+		info->exe = _strdup(*info->tokens);
+	}
+	if (info->exe && access(info->exe, X_OK) == 0)
+	{
+		return (_execute(info));
+	}
+	if (info->exe)
+	{
+		perrorl_default(*info->argv, info->lineno, "Permission denied",
+				*info->tokens, NULL);
+		info->status = 126;
+	}
+	else
+	{
+		perrorl_default(*info->argv, info->lineno, "not found",
+				*info->tokens, NULL);
+		info->status = 127;
+	}
+	return (info->status);
+}
+
+
+/**
+ * _execute - fork and exec the current command
+ * @info: shell information
+ *
+ * Return: exit status of the child process
+ */
+int _execute(info_t *info)
+{
+	char *exe, **argv, **env;
+
+	switch (fork())
+	{
+	case 0:
+		exe = info->exe;
+		argv = info->tokens;
+		env = dict_to_env(info->env);
+
+		info->exe = NULL;
+		info->tokens = NULL;
+		free_info(info);
+
+		execve(exe, argv, env);
+		perror(*argv);
+
+		if (info->file)
+			close(info->fileno);
+
+		free(exe);
+		free_tokens(&argv);
+		free_tokens(&env);
+		exit(EXIT_FAILURE);
+		break;
+	case -1:
+		perrorl_default(*info->argv, info->lineno, "Cannot fork", NULL);
+		info->status = 2;
+		break;
+	default:
+		wait(&info->status);
+		info->status = WEXITSTATUS(info->status);
+		break;
+	}
+	free(info->exe);
+	info->exe = NULL;
+
+	return (info->status);
 }

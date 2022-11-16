@@ -1,36 +1,39 @@
-#include "shell.h"
+#include "builtins.h"
 
 /**
- * exit_shell - This will run the builtin exit
- * @line: Line buffer of user input
- * @args: Arguments from user
- * @env: Environment
- * Return: Void
+ * get_builtins - get the builtins
+ * Return: pointer to a NULL-terminated statically-allocated array of builtins
  */
-void exit_shell(char **args, char *line, char **env)
+const builtin_t *get_builtins(void)
 {
-	free(args);
-	free(line);
-	(void)env;
-	exit(0);
+	static builtin_t builtins[] = {
+		{"alias", __alias, ALIAS_HELP, ALIAS_DESC},
+		{"cd", __cd, CD_HELP, CD_DESC},
+		{"env", __env, ENV_HELP, ENV_DESC},
+		{"exec", __exec, EXEC_HELP, EXEC_DESC},
+		{"exit", __exit, EXIT_HELP, EXIT_DESC},
+		{"help", __help, HELP_HELP, HELP_DESC},
+		{"setenv", __setenv, SETENV_HELP, SETENV_DESC},
+		{"unsetenv", __unsetenv, UNSETENV_HELP, UNSETENV_DESC},
+		{0}
+	};
+
+	return (builtins);
 }
-/**
- * env_shell - Prints shell environment
- * @args: Arguments split from cmdline
- * @line: User input buffer
- * @env: Environment
- */
-void env_shell(char **args, char *line, char **env)
-{
-	int size, i = 0;
 
-	while (env[i] != NULL)
+/**
+ * get_builtin - get a builtin by name
+ * @name: the name of the builtin to retrieve
+ * Return: NULL if no match is found, otherwise a pointer to the builtin
+ */
+const builtin_t *get_builtin(const char *name)
+{
+	const builtin_t *builtin = NULL;
+
+	for (builtin = get_builtins(); builtin->name; builtin += 1)
 	{
-		size = _strlen(env[i]);
-		write(1, env[i], size);
-		write(1, "\n", 1);
-		i++;
+		if (_strcmp(name, builtin->name) == 0)
+			return (builtin);
 	}
-	(void)args;
-	(void)line;
+	return (NULL);
 }
