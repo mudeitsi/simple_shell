@@ -1,88 +1,52 @@
 #include "shell.h"
-
-int status = 0;
-
-int line_num = 1;
-
-char *shell_name = NULL;
-
 /**
- * main - executes commands from the terminal
- * @ac: number of inputs from main
- * @av: array of inputs from main
+ * main - This is a simple shell created by
+ * Violet Esere for the ALX SE program
  *
- * Return: 0, or another number if desired
+ * Return: 0 if success
  */
-int main(__attribute__((unused))int ac, char **av)
+ 
+int main(void)
 {
-	int bytes_read;
-	int is_separated = FALSE;
-	int i;
-	size_t buf_size = 1;
-	char *buf = NULL;
-	char *buf_ptr;
-	char *buf_tmp;
-	char **args = NULL;
+	ssize_t bytes_rd = 0; 
+	size_t bf_size = 0; 
+	char *entry = NULL, *arguments[20]; 
+	int counter = 1, vf_stat = 0, exist_stat = 0, exit_stat = 0, blt_stat = 0;
 
-	shell_name = _strdup(*av);
-
-	environ = array_cpy(environ, list_len(environ, NULL));
-
-	signal(SIGINT, SIG_IGN);
-
-	buf = malloc(1);
-	if (buf == NULL)
-		exit(EXIT_FAILURE);
-
-	while (1)
+	_printp("$ ", 2);
+	bytes_rd = getline(&entry, &bf_size, stdin); 
+	while (bytes_rd != -1)
 	{
-		if (is_separated == FALSE)
+		if (*entry != '\n')
 		{
-			if (isatty(STDIN_FILENO) == 1)
-				write(STDOUT_FILENO, "my_shell$ ", 10);
-
-			bytes_read = getline(&buf, &buf_size, stdin);
-
-			if (bytes_read == -1)
-				break;
-			if (bytes_read == 1)
+			fill_args(entry, arguments);
+			if (arguments[0] != NULL)
 			{
-				line_num++;
-				continue;
+				exist_stat = exist(arguments[0]);
+				if (exist_stat != 0)
+				{
+					vf_stat = verify_path(arguments);
+					if (vf_stat == 0)
+						exit_stat = exec(arguments), free(entry), free(*arguments);
+					else
+					{
+					blt_stat = verify_blt(arguments, exit_stat);
+					if (blt_stat != 0)
+						exit_stat = print_not_found(arguments, counter), free(entry);
+					}
+				}
+				else 
+					exit_stat = exec(arguments), free(entry);
 			}
-			buf[bytes_read - 1] = '\0';
-			buf = input_san(buf, &buf_size);
-			if (buf_size == 0)
-			{
-				line_num++;
-				continue;
-			}
-			buf_ptr = buf;
+			else
+				free(entry);
 		}
-		else
-			buf_ptr = buf_tmp;
-
-		buf_tmp = NULL;
-		args = make_array(buf_ptr, ' ', &buf_tmp);
-		if (buf_tmp != NULL)
-			is_separated = TRUE;
-		else
-			is_separated = FALSE;
-
-		i = command_manager(args);
-
-		free(args);
-
-		if (is_separated == FALSE)
-			line_num++;
-
-		if (i == EXIT_SHELL)
-			break;
+		else if (*entry == '\n')
+			free(entry);
+		entry = NULL, counter++;
+		_printp("$ ", 2), bytes_rd = getline(&entry, &bf_size, stdin);
 	}
-	free(buf);
-	alias_func(NULL, TRUE);
-	free_array(environ);
-	free(shell_name);
-
-	return (status % 256);
+	last_free(entry);
+	return (exit_stat);
 }
+
