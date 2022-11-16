@@ -1,52 +1,47 @@
 #include "shell.h"
 /**
- * main - This is a simple shell created by
- * Violet Esere for the ALX SE program
- *
- * Return: 0 if success
+ * shell - Infinite loop that runs shell
+ * @ac: Arg count
+ * @av: args passed to shell at beginning of prog
+ * @env: Environment
+ * Return: Void
  */
- 
-int main(void)
+void shell(int ac, char **av, char **env)
 {
-	ssize_t bytes_rd = 0; 
-	size_t bf_size = 0; 
-	char *entry = NULL, *arguments[20]; 
-	int counter = 1, vf_stat = 0, exist_stat = 0, exit_stat = 0, blt_stat = 0;
+	char *line;
+	char **args;
+	int status = 1;
+	char *tmp = NULL;
+	char *er;
+	char *filename;
+	int flow;
 
-	_printp("$ ", 2);
-	bytes_rd = getline(&entry, &bf_size, stdin); 
-	while (bytes_rd != -1)
-	{
-		if (*entry != '\n')
+	er = "Error";
+	do {
+		prompt();
+		line = _getline();
+		args = split_line(line);
+		flow = bridge(args[0], args);
+		if (flow == 2)
 		{
-			fill_args(entry, arguments);
-			if (arguments[0] != NULL)
+			filename = args[0];
+			args[0] = find_path(args[0], tmp, er);
+			if (args[0] == er)
 			{
-				exist_stat = exist(arguments[0]);
-				if (exist_stat != 0)
-				{
-					vf_stat = verify_path(arguments);
-					if (vf_stat == 0)
-						exit_stat = exec(arguments), free(entry), free(*arguments);
-					else
-					{
-					blt_stat = verify_blt(arguments, exit_stat);
-					if (blt_stat != 0)
-						exit_stat = print_not_found(arguments, counter), free(entry);
-					}
-				}
-				else 
-					exit_stat = exec(arguments), free(entry);
+				args[0] = search_cwd(filename, er);
+				if (args[0] == filename)
+					write(1, er, 5);
 			}
-			else
-				free(entry);
 		}
-		else if (*entry == '\n')
-			free(entry);
-		entry = NULL, counter++;
-		_printp("$ ", 2), bytes_rd = getline(&entry, &bf_size, stdin);
-	}
-	last_free(entry);
-	return (exit_stat);
+		if (args[0] != er)
+			status = execute_prog(args, line, env, flow);
+		free(line);
+		free(args);
+	} while (status);
+	if (!ac)
+		(void)ac;
+	if (!av)
+		(void)av;
+	if (!env)
+		(void)env;
 }
-
